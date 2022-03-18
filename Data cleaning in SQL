@@ -89,3 +89,30 @@ Set SoldAsVacant =  Case SoldAsVacant
 					When 'n' then 'No'
 					else  SoldAsVacant
 					end;
+
+
+
+
+
+
+-- Remove duplicates
+WITH RowNumCTE AS(  SELECT  *,
+			    ROW_NUMBER() OVER (PARTITION BY 	parcelID,
+								propertyAddress,
+								SalePrice,
+								SaleDate,
+								LegalReference
+								ORDER BY uniqueID) AS row_num
+		   FROM PortfolioProject.dbo.hashvilleHousing)
+DELETE FROM RowNumCTE
+WHERE row_num > 1
+
+
+
+
+
+-- Remove unused columns
+
+ALTER TABLE  PortfolioProject.dbo.hashvillehousing
+DROP COLUMN OwnerAddress, TaxDistrict, PropertyAddress
+
