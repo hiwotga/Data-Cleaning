@@ -1,0 +1,125 @@
+
+-- See what is in the housing table
+
+Select * 
+From PortfolioProject.dbo.housing;
+
+
+
+
+
+
+-- Standardize Date Format
+
+-- Method1, covert it to Date format  
+
+Update PortfolioProject.dbo.housing
+Set SaleDate = CONVERT(Date, SaleDAte) ;
+
+
+
+
+
+
+-- Method2, alter the table
+
+Alter table PortfolioProject.dbo.housing
+Alter column SaleDate Date ;
+
+
+
+
+
+
+
+
+
+
+-- Populate null rows of PropertyAddress column  with thes property address of another row which has same ParecelID
+-- but different UniqueID
+
+Update a
+Set propertyAddress = ISNULL(a.propertyAddress, b.propertyAddress)
+From PortfolioProject.dbo.housing a
+Join PortfolioProject.dbo.housing b
+ON a.ParcelID = b.ParcelID
+AND a.[UniqueID ] <> b.[UniqueID ]
+Where a.propertyAddress is Null;
+
+
+
+
+
+
+-- Breaking out Address into individual columns (Address, city)
+-- Method1
+
+-- Add the new columns to the table
+
+Alter Table PortfolioProject.dbo.housing
+Add	propertysplitaddress nvarchar(255), propertycity nvarchar(255)
+
+
+
+
+
+
+-- Insert value to the new columns
+
+Update  PortfolioProject.dbo.housing
+Set propertysplitaddress = SUBSTRING(propertyaddress, 1, CHARINDEX(',',propertyaddress)-1),
+	  propertycity = SUBSTRING(propertyaddress,  CHARINDEX(',',propertyaddress)+1, len(propertyaddress));
+
+
+
+
+-- Method2, split into three columns
+
+-- Add the new columns to the table
+
+Alter Table PortfolioProject.dbo.housing
+Add	ownersplitaddress nvarchar(255), ownersplitcity nvarchar(255), ownersplitstate nvarchar(255)
+
+
+
+
+-- Insert value to the new columns
+
+Update  PortfolioProject.dbo.housing
+Set	ownersplitaddress = PARSENAME (REPLACE(owneraddress, ',', '.'),3),
+	  ownersplitcity = PARSENAME (REPLACE(owneraddress, ',', '.'),2),
+  	ownersplitstate = PARSENAME (REPLACE(owneraddress, ',', '.'),1)
+
+
+
+
+-- update values inserted with short form (yes as y and no as n) to full form
+
+Update  PortfolioProject.dbo.housing
+Set SoldAsVacant =  Case SoldAsVacant
+					When 'y' then 'Yes'
+					When 'n' then 'No'
+					else  SoldAsVacant
+					end;
+
+
+
+-- Remove duplicates
+WITH RowNumCTE AS(  SELECT  *,
+                            ROW_NUMBER() OVER (PARTITION BY parcelID,
+                                            propertyAddress,
+                                            SalePrice,
+                                            SaleDate,
+                                            LegalReference
+                                            ORDER BY uniqueID) AS row_num
+                            FROM PortfolioProject.dbo.housing)
+DELETE FROM RowNumCTE
+WHERE row_num > 1
+
+
+
+
+-- Remove unused columns
+
+ALTER TABLE  PortfolioProject.dbo.housing
+DROP COLUMN OwnerAddress, TaxDistrict, PropertyAddress
